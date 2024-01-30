@@ -1,0 +1,39 @@
+<html lang="en">
+    <head>
+        <title>picamera2 MJPEG streaming demo</title>
+    </head>
+    <body>
+        <h1>Picamera2 MJPEG Streaming Demo</h1>
+        <img src="stream.mjpg" width="1280" height="720"/>
+        <button id="postButton">POST</button>
+        <button id="getButton">GET</button>
+        <script>
+            const data = {
+                light_on: false
+            }
+
+            const params = {
+                headers: {
+                    "content-type": "application/json; charset=UTF-8"
+                },
+                body: JSON.stringify(data),
+                method: "POST"
+            };
+
+            const params2 = {
+                method: "GET"
+            };
+
+            document.getElementById("postButton").addEventListener("click", () => {
+                fetch ("#", params)
+                .then(res => console.log(res))
+                .catch(error => console.log(error))
+            });
+            document.getElementById("getButton").addEventListener("click", () => {
+                fetch ("/update.html", params2)
+                .then(res => console.log(res))
+                .catch(error => console.log(error))
+            });
+        </script>
+    </body>
+</html>
