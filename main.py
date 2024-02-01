@@ -15,6 +15,7 @@ from picamera2.encoders import MJPEGEncoder
 from picamera2.outputs import FileOutput
 
 DHTPin = 11  # define the pin of DHT11
+LEDPin = 15
 
 settings = {
     "light": False
@@ -146,6 +147,12 @@ def handle_post(post_data):
     if "light" in post_data:
         settings['light'] = post_data['light']
 
+    if "light" in settings:
+        if settings["light"]:
+            GPIO.output(LEDPin, GPIO.HIGH)
+        else:
+            GPIO.output(LEDPin, GPIO.LOW)
+
     print(settings)
 
 
@@ -174,8 +181,9 @@ if __name__ == "__main__":
     output = StreamingOutput()
     picam2.start_recording(MJPEGEncoder(), FileOutput(output))
 
-    lock = Lock()
+    GPIO.setup(LEDPin, GPIO.OUT)
 
+    lock = Lock()
     dht = DHT.DHT(DHTPin, lock)  # create a DHT class object
 
     # Create the server, binding to localhost on port 8000
