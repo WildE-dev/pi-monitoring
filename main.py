@@ -131,11 +131,8 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 
             content_len = int(self.headers.get('Content-Length', 0))
             post_body = self.rfile.read(content_len)
-
             post_data = json.loads(post_body)
-
             handle_post(post_data)
-            print(post_data)
         else:
             self.do_AUTHHEAD()
             self.wfile.write(self.headers.get('Authorization').encode('utf-8'))
@@ -152,8 +149,6 @@ def handle_post(post_data):
             GPIO.output(LEDPin, GPIO.HIGH)
         else:
             GPIO.output(LEDPin, GPIO.LOW)
-
-    print(settings)
 
 
 def get_data():
