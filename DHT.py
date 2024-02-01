@@ -21,8 +21,9 @@ class DHT(object):
     humidity = 0
     temperature = 0
 
-    def __init__(self, pin):
+    def __init__(self, pin, lock):
         self.pin = pin
+        self.lock = lock
         self.bits = [0, 0, 0, 0, 0]
         GPIO.setmode(GPIO.BOARD)
 
@@ -87,7 +88,9 @@ class DHT(object):
 
     # Read DHT sensor, analyze the data of temperature and humidity
     def readDHT11Once(self):
+        self.lock.acquire()
         rv = self.readSensor(self.pin, self.DHTLIB_DHT11_WAKEUP)
+        self.lock.release()
         if rv is not self.DHTLIB_OK:
             self.humidity = self.DHTLIB_INVALID_VALUE
             self.temperature = self.DHTLIB_INVALID_VALUE

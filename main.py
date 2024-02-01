@@ -6,7 +6,7 @@ import json
 import logging
 import socketserver
 from http import server
-from threading import Condition
+from threading import Condition, Lock
 
 import RPi.GPIO as GPIO
 import DHT
@@ -174,7 +174,9 @@ if __name__ == "__main__":
     output = StreamingOutput()
     picam2.start_recording(MJPEGEncoder(), FileOutput(output))
 
-    dht = DHT.DHT(DHTPin)  # create a DHT class object
+    lock = Lock()
+
+    dht = DHT.DHT(DHTPin, lock)  # create a DHT class object
 
     # Create the server, binding to localhost on port 8000
     with StreamingServer((HOST, PORT), StreamingHandler) as server:
