@@ -99,8 +99,6 @@ def get_page(self):
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
-        print(self.headers.get('Authorization'))
-        print('Basic ' + get_key())
         if self.headers.get('Authorization') is None:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode('utf-8'))
@@ -158,7 +156,7 @@ def get_data():
         data["temperature"] = dht.temperature
         data["humidity"] = dht.humidity
     else:
-        logging.warning("DHT11 Error: " + chk)
+        logging.warning("DHT11 Error: " + str(chk))
 
     return json.dumps(data)
 
