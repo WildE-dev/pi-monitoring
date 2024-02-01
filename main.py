@@ -181,6 +181,7 @@ if __name__ == "__main__":
     output = StreamingOutput()
     picam2.start_recording(MJPEGEncoder(), FileOutput(output))
 
+    GPIO.setmode(GPIO.BOARD)
     GPIO.setup(LEDPin, GPIO.OUT)
 
     lock = Lock()
