@@ -1,0 +1,19 @@
+body {
+    width: 85vw;
+    margin: auto;
+}
+
+#main-section {
+    display: flex;
+    flex-direction: column;
+}
+
+#stream {
+
+}
+
+#info-section {
+    display: flex;
+    gap: 10%;
+    justify-content: center;
+}

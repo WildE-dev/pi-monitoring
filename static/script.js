@@ -1,34 +1,43 @@
-const data = {
-    temperature: 69,
-    humidity: 420,
-    atm_pressure: 42069
-};
-
-const params = {
-    headers: {
-        "content-type": "application/json; charset=UTF-8"
-    },
-    body: JSON.stringify(data),
-    method: "POST"
-};
-
-const params2 = {
+const getParams = {
     method: "GET"
 };
 
-document.getElementById("postButton").addEventListener("click", () => {
-    fetch ("#", params)
-    .then(res => console.log(res))
-    .catch(error => console.log(error))
-});
-document.getElementById("getButton").addEventListener("click", getData);
+window.addEventListener("load", pageLoad);
+const interval = setInterval(getData, 5000);
+
+async function pageLoad() {
+    document.getElementById("postButton").addEventListener("click", postData);
+    //document.getElementById("getButton").addEventListener("click", getData);
+    await getData()
+}
 
 async function getData() {
-    const response = await fetch ("/data.json", params2);
+    const response = await fetch ("/data.json", getParams);
     const data = await response.json();
 
     console.log(data);
     document.getElementById("temperature").innerHTML = "Temperature: " + data['temperature'];
     document.getElementById("humidity").innerHTML = "Humidity: " + data['humidity'];
-    document.getElementById("atm_pressure").innerHTML = "Atmospheric Pressure: " + data['atm_pressure'];
+    document.getElementById("soil_humidity").innerHTML = "Soil Humidity: " + data['soil_humidity'];
+}
+
+async function postData() {
+    const light = document.getElementById("light_check").checked
+
+    const data = {
+        light: light
+    };
+
+    const postParams = {
+        headers: {
+            "content-type": "application/json; charset=UTF-8"
+        },
+        body: JSON.stringify(data),
+        method: "POST"
+    };
+
+    const response = await fetch ("#", postParams);
+    //const data = await response.json();
+
+    console.log(response);
 }

@@ -1,23 +1,24 @@
 #!/usr/bin/python3
 
+import base64
 import io
-import logging
+import json
 import socketserver
 from http import server
 from threading import Condition
-import json
-import base64
 
 # from picamera2 import Picamera2
 # from picamera2.encoders import MJPEGEncoder
 # from picamera2.outputs import FileOutput
 
-key = base64.b64encode("admin:SuperSecurePassword1".encode('utf-8'))
-data = {
-    "temperature": 22.4,
-    "humidity": 67.3,
-    "atm_pressure": 1.1
+settings = {
+    "light": False
 }
+
+
+def get_key():
+    with open('key.txt') as file:
+        return base64.b64encode(file.read().encode('utf-8'))
 
 
 class StreamingOutput(io.BufferedIOBase):
@@ -74,7 +75,7 @@ def get_page(self):
     #                    'Removed streaming client %s: %s',
     #                    self.client_address, str(e))
     elif self.path == '/data.json':
-        content = json.dumps(data).encode('utf-8')
+        content = get_data().encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/json')
         self.send_header('Content-Length', str(len(content)))
@@ -88,6 +89,14 @@ def get_page(self):
             self.send_header('Content-Length', str(len(content)))
             self.end_headers()
             self.wfile.write(content)
+    elif self.path == '/styles.css':
+        with open("static/styles.css", "r") as script:
+            content = script.read().encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/css')
+            self.send_header('Content-Length', str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
     else:
         self.send_error(404)
         self.end_headers()
@@ -95,11 +104,10 @@ def get_page(self):
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
-        global key
         if self.headers.get('Authorization') is None:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode('utf-8'))
-        elif self.headers.get('Authorization') == 'Basic ' + key.decode('utf-8'):
+        elif self.headers.get('Authorization') == 'Basic ' + get_key().decode('utf-8'):
             get_page(self)
         else:
             self.do_AUTHHEAD()
@@ -118,23 +126,41 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        global key
         if self.headers.get('Authorization') is None:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode('utf-8'))
-        elif self.headers.get('Authorization') == 'Basic ' + key.decode('utf-8'):
+        elif self.headers.get('Authorization') == 'Basic ' + get_key().decode('utf-8'):
             self.send_response(204)
             self.end_headers()
 
             content_len = int(self.headers.get('Content-Length', 0))
             post_body = self.rfile.read(content_len)
-            global data
-            data = json.loads(post_body)
-            print(data)
+
+            post_data = json.loads(post_body)
+
+            handle_post(post_data)
+            print(post_data)
         else:
             self.do_AUTHHEAD()
             self.wfile.write(self.headers.get('Authorization').encode('utf-8'))
             self.wfile.write('not authenticated'.encode('utf-8'))
+
+
+def handle_post(post_data):
+    global settings
+    if "light" in post_data:
+        settings['light'] = post_data['light']
+
+    print(settings)
+
+
+def get_data():
+    dummy_data = {
+        "temperature": 22.4,
+        "humidity": 67.3,
+        "soil_humidity": 82.1
+    }
+    return json.dumps(dummy_data)
 
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
