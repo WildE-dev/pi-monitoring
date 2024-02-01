@@ -23,7 +23,7 @@ settings = {
 
 def get_key():
     with open('key.txt') as file:
-        return base64.b64encode(file.read())
+        return base64.b64encode(file.read().encode('utf-8'))
 
 
 class StreamingOutput(io.BufferedIOBase):
