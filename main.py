@@ -152,7 +152,7 @@ def handle_post(post_data):
 def get_data():
     data = {}
     chk = dht.readDHT11()  # Read DHT11 and get a return value.
-    if chk is dht.DHTLIB_OK:  # Determine whether data read is normal according to the return value.
+    if chk == dht.DHTLIB_OK:  # Determine whether data read is normal according to the return value.
         data["temperature"] = dht.temperature
         data["humidity"] = dht.humidity
     else:
