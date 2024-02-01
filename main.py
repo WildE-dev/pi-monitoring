@@ -23,7 +23,7 @@ settings = {
 
 def get_key():
     with open('key.txt') as file:
-        return base64.b64encode(file.read().encode('utf-8'))
+        return base64.b64encode(file.read())
 
 
 class StreamingOutput(io.BufferedIOBase):
@@ -99,6 +99,8 @@ def get_page(self):
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
+        print(self.headers.get('Authorization'))
+        print(get_key().decode('utf-8'))
         if self.headers.get('Authorization') is None:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode('utf-8'))
