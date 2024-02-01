@@ -3,18 +3,13 @@
 import base64
 import io
 import json
-import logging
 import socketserver
 from http import server
 from threading import Condition
 
-import RPi.GPIO as GPIO
-import DHT
-from picamera2 import Picamera2
-from picamera2.encoders import MJPEGEncoder
-from picamera2.outputs import FileOutput
-
-DHTPin = 11  # define the pin of DHT11
+# from picamera2 import Picamera2
+# from picamera2.encoders import MJPEGEncoder
+# from picamera2.outputs import FileOutput
 
 settings = {
     "light": False
@@ -54,21 +49,15 @@ def get_page(self):
         self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
         self.end_headers()
 
-        try:
-            while True:
-                with output.condition:
-                    output.condition.wait()
-                    frame = output.frame
-                self.wfile.write(b'--FRAME\r\n')
-                self.send_header('Content-Type', 'image/jpeg')
-                self.send_header('Content-Length', len(frame))
-                self.end_headers()
-                self.wfile.write(frame)
-                self.wfile.write(b'\r\n')
-        except Exception as e:
-            logging.warning(
-                'Removed streaming client %s: %s',
-                self.client_address, str(e))
+        # Test image
+        with open("static/test.png", "rb") as image:
+            frame = image.read()
+            self.wfile.write(b'--FRAME\r\n')
+            self.send_header('Content-Type', 'image/png')
+            self.send_header('Content-Length', str(len(frame)))
+            self.end_headers()
+            self.wfile.write(frame)
+            self.wfile.write(b'\r\n')
     elif self.path == '/data.json':
         content = get_data().encode('utf-8')
         self.send_response(200)
@@ -150,15 +139,12 @@ def handle_post(post_data):
 
 
 def get_data():
-    data = {}
-    chk = dht.readDHT11()  # Read DHT11 and get a return value.
-    if chk is dht.DHTLIB_OK:  # Determine whether data read is normal according to the return value.
-        data["temperature"] = dht.temperature
-        data["humidity"] = dht.humidity
-    else:
-        logging.warning("DHT11 Error: " + chk)
-
-    return json.dumps(data)
+    dummy_data = {
+        "temperature": 22.4,
+        "humidity": 67.3,
+        "soil_humidity": 82.1
+    }
+    return json.dumps(dummy_data)
 
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
@@ -169,13 +155,6 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 if __name__ == "__main__":
     HOST, PORT = "", 8000
 
-    picam2 = Picamera2()
-    picam2.configure(picam2.create_video_configuration(main={"size": (1280, 720)}))
-    output = StreamingOutput()
-    picam2.start_recording(MJPEGEncoder(), FileOutput(output))
-
-    dht = DHT.DHT(DHTPin)  # create a DHT class object
-
     # Create the server, binding to localhost on port 8000
     with StreamingServer((HOST, PORT), StreamingHandler) as server:
         # Activate the server; this will keep running until you
@@ -184,4 +163,3 @@ if __name__ == "__main__":
             server.serve_forever()
         except KeyboardInterrupt:
             server.server_close()
-            GPIO.cleanup()
