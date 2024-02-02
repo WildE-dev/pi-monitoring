@@ -10,6 +10,7 @@ import time
 from http import server
 from threading import Condition, Lock
 
+from smbus import SMBus
 from PIL import Image, ImageDraw, ImageFont
 import RPi.GPIO as GPIO
 import DHT
@@ -182,7 +183,15 @@ def get_data():
     else:
         logging.warning("DHT11 Error: " + str(chk))
 
+    data["soil_humidity"] = read_ads7830(0) / 2.55
+
     return json.dumps(data)
+
+
+def read_ads7830(location):
+    locations = [0x84, 0xc4, 0x94, 0xd4, 0xa4, 0xe4, 0xb4, 0xf4]
+    bus.write_byte(0x4b, locations[location])
+    return bus.read_byte(0x4b)
 
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
@@ -200,6 +209,8 @@ if __name__ == "__main__":
 
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(LEDPin, GPIO.OUT)
+
+    bus = SMBus(1)
 
     lock = Lock()
     dht = DHT.DHT(DHTPin, lock)  # create a DHT class object
