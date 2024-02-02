@@ -8,6 +8,7 @@ import socketserver
 from http import server
 from threading import Condition, Lock
 
+from PIL import Image, ImageDraw
 import RPi.GPIO as GPIO
 import DHT
 from picamera2 import Picamera2
@@ -60,11 +61,18 @@ def get_page(self):
                 with output.condition:
                     output.condition.wait()
                     frame = output.frame
+                    im = Image.frombytes(frame)
+                    draw = ImageDraw.Draw(im)
+                    draw.line((0, 0) + im.size, fill=128)
+                    draw.line((0, im.size[1], im.size[0], 0), fill=128)
+                    with io.BytesIO() as frame_data:
+                        im.save(frame_data, format="JPEG")
+                        new_frame = frame_data.getvalue()
                 self.wfile.write(b'--FRAME\r\n')
                 self.send_header('Content-Type', 'image/jpeg')
-                self.send_header('Content-Length', len(frame))
+                self.send_header('Content-Length', len(new_frame))
                 self.end_headers()
-                self.wfile.write(frame)
+                self.wfile.write(new_frame)
                 self.wfile.write(b'\r\n')
         except Exception as e:
             logging.warning(
