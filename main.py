@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import socketserver
+import time
 from http import server
 from threading import Condition, Lock
 
@@ -21,6 +22,9 @@ LEDPin = 15
 settings = {
     "light": False
 }
+
+data = {}
+data_update_time = 0
 
 
 def get_key():
@@ -63,7 +67,7 @@ def get_page(self):
                     frame = output.frame
                     im = Image.open(io.BytesIO(frame))
                     draw = ImageDraw.Draw(im)
-                    draw.text((10, 60), "Test Text", fill=(255, 255, 255, 255))
+                    draw.text((10, 60), get_data(), fill=(255, 255, 255, 255), font_size=24, stroke_fill=(0, 0, 0, 255), stroke_width=2)
                     with io.BytesIO() as frame_data:
                         im.save(frame_data, format="JPEG")
                         new_frame = frame_data.getvalue()
@@ -159,7 +163,14 @@ def handle_post(post_data):
 
 
 def get_data():
-    data = {}
+    global data_update_time
+    global data
+
+    if data_update_time >= time.time() - 5:
+        return json.dumps(data)
+
+    data_update_time = time.time()
+
     chk = dht.readDHT11()  # Read DHT11 and get a return value.
     if chk == dht.DHTLIB_OK:  # Determine whether data read is normal according to the return value.
         data["temperature"] = dht.temperature
