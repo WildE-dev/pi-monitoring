@@ -61,7 +61,7 @@ def get_page(self):
                 with output.condition:
                     output.condition.wait()
                     frame = output.frame
-                    im = Image.frombytes(frame)
+                    im = Image.open(io.BytesIO(frame))
                     draw = ImageDraw.Draw(im)
                     draw.line((0, 0) + im.size, fill=128)
                     draw.line((0, im.size[1], im.size[0], 0), fill=128)
