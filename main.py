@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import base64
+from datetime import datetime
 import io
 import json
 import logging
@@ -67,7 +68,7 @@ def get_page(self):
                     frame = output.frame
                     im = Image.open(io.BytesIO(frame))
                     draw = ImageDraw.Draw(im)
-                    draw.text((10, 60), get_data(), fill=(255, 255, 255, 255), font_size=24, stroke_fill=(0, 0, 0, 255), stroke_width=2)
+                    draw.text((10, 10), datetime.now().isoformat(), fill='white', font_size=24, stroke_fill='black', stroke_width=1)
                     with io.BytesIO() as frame_data:
                         im.save(frame_data, format="JPEG")
                         new_frame = frame_data.getvalue()
