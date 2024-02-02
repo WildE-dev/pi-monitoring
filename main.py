@@ -183,7 +183,7 @@ def get_data():
     else:
         logging.warning("DHT11 Error: " + str(chk))
 
-    data["soil_humidity"] = read_ads7830(0) / 2.55
+    data["soil_humidity"] = round(read_ads7830(0) / 2.55)
 
     return json.dumps(data)
 
