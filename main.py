@@ -13,7 +13,7 @@ from threading import Condition, Lock
 from PIL import Image, ImageDraw, ImageFont
 import RPi.GPIO as GPIO
 import DHT
-from picamera2 import Picamera2
+from picamera2 import Picamera2, MappedArray
 from picamera2.encoders import MJPEGEncoder
 from picamera2.outputs import FileOutput
 
@@ -26,6 +26,8 @@ settings = {
 
 data = {}
 data_update_time = 0
+
+fnt = ImageFont.truetype("fonts/UbuntuMono-Regular.ttf", 36)
 
 
 def get_key():
@@ -66,19 +68,11 @@ def get_page(self):
                 with output.condition:
                     output.condition.wait()
                     frame = output.frame
-                    im = Image.open(io.BytesIO(frame))
-                    fnt = ImageFont.truetype("fonts/UbuntuMono-Regular.ttf", 36)
-                    draw = ImageDraw.Draw(im)
-                    now = datetime.now()
-                    draw.text((10, 10), now.strftime('%Y-%m-%dT%H:%M:%S'), font=fnt, fill='white', stroke_fill='black', stroke_width=1)
-                    with io.BytesIO() as frame_data:
-                        im.save(frame_data, format="JPEG")
-                        new_frame = frame_data.getvalue()
                 self.wfile.write(b'--FRAME\r\n')
                 self.send_header('Content-Type', 'image/jpeg')
-                self.send_header('Content-Length', len(new_frame))
+                self.send_header('Content-Length', len(frame))
                 self.end_headers()
-                self.wfile.write(new_frame)
+                self.wfile.write(frame)
                 self.wfile.write(b'\r\n')
         except Exception as e:
             logging.warning(
@@ -187,6 +181,18 @@ def get_data():
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
+
+
+def apply_timestamp(request):
+    # with io.BytesIO() as frame_data:
+    #   im.save(frame_data, format="JPEG")
+    #   new_frame = frame_data.getvalue()
+    with MappedArray(request, "main") as m:
+        im = Image.fromarray(m.array)
+        draw = ImageDraw.Draw(im)
+        now = datetime.now()
+        draw.text((10, 10), now.strftime('%Y-%m-%d %H:%M:%S'), font=fnt, fill='white', stroke_fill='black',
+                  stroke_width=1)
 
 
 if __name__ == "__main__":
