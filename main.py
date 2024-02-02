@@ -63,8 +63,7 @@ def get_page(self):
                     frame = output.frame
                     im = Image.open(io.BytesIO(frame))
                     draw = ImageDraw.Draw(im)
-                    draw.line((0, 0) + im.size, fill=128)
-                    draw.line((0, im.size[1], im.size[0], 0), fill=128)
+                    draw.text((10, 60), "Test Text", fill=(255, 255, 255, 255))
                     with io.BytesIO() as frame_data:
                         im.save(frame_data, format="JPEG")
                         new_frame = frame_data.getvalue()
