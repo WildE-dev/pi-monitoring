@@ -69,7 +69,8 @@ def get_page(self):
                     im = Image.open(io.BytesIO(frame))
                     fnt = ImageFont.truetype("fonts/UbuntuMono-Regular.ttf", 36)
                     draw = ImageDraw.Draw(im)
-                    draw.text((10, 10), datetime.now().isoformat(), font=fnt, fill='white', stroke_fill='black', stroke_width=1)
+                    now = datetime.now()
+                    draw.text((10, 10), now.strftime('%Y-%m-%dT%H:%M:%S'), font=fnt, fill='white', stroke_fill='black', stroke_width=1)
                     with io.BytesIO() as frame_data:
                         im.save(frame_data, format="JPEG")
                         new_frame = frame_data.getvalue()
