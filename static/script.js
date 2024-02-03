@@ -1,17 +1,17 @@
-const getParams = {
-    method: "GET"
-};
-
 window.addEventListener("load", pageLoad);
-const interval = setInterval(getData, 5000);
 
 async function pageLoad() {
     document.getElementById("postButton").addEventListener("click", postData);
     //document.getElementById("getButton").addEventListener("click", getData);
     await getData()
+    setInterval(getData, 5000);
 }
 
 async function getData() {
+    const getParams = {
+        method: "GET"
+    };
+
     const response = await fetch ("/data.json", getParams);
     const data = await response.json();
 
@@ -22,9 +22,11 @@ async function getData() {
 
 async function postData() {
     const light = document.getElementById("light_check").checked
+    const water = document.getElementById("water_check").checked
 
     const data = {
-        light: light
+        light: light,
+        water: water
     };
 
     const postParams = {

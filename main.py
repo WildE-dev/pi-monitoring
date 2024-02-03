@@ -20,9 +20,11 @@ from picamera2.outputs import FileOutput
 
 DHTPin = 11  # define the pin of DHT11
 LEDPin = 15
+WaterPin = 13
 
 settings = {
-    "light": False
+    "light": False,
+    "water": False
 }
 
 data = {}
@@ -157,14 +159,12 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 
 def handle_post(post_data):
     global settings
-    if "light" in post_data:
-        settings['light'] = post_data['light']
+    for i, j in post_data:
+        if i in settings:
+            settings[i] = j
 
-    if "light" in settings:
-        if settings["light"]:
-            GPIO.output(LEDPin, GPIO.HIGH)
-        else:
-            GPIO.output(LEDPin, GPIO.LOW)
+    GPIO.output(LEDPin, GPIO.HIGH if settings["light"] else GPIO.LOW)
+    GPIO.output(WaterPin, GPIO.HIGH if settings["water"] else GPIO.LOW)
 
 
 def get_data():
