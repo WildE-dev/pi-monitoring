@@ -159,9 +159,9 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 
 def handle_post(post_data):
     global settings
-    for i, j in post_data:
+    for i in post_data:
         if i in settings:
-            settings[i] = j
+            settings[i] = post_data[i]
 
     GPIO.output(LEDPin, GPIO.HIGH if settings["light"] else GPIO.LOW)
     GPIO.output(WaterPin, GPIO.HIGH if settings["water"] else GPIO.LOW)
