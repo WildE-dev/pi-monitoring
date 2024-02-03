@@ -209,6 +209,7 @@ if __name__ == "__main__":
 
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(LEDPin, GPIO.OUT)
+    GPIO.setup(WaterPin, GPIO.OUT)
 
     bus = SMBus(1)
 
