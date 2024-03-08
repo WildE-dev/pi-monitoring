@@ -1,11 +1,5 @@
-window.addEventListener("load", pageLoad);
-
-async function pageLoad() {
-    document.getElementById("postButton").addEventListener("click", postData);
-    //document.getElementById("getButton").addEventListener("click", getData);
-    await getData()
-    setInterval(getData, 5000);
-}
+document.getElementById("postButton").addEventListener("click", postData);
+setInterval(getData, 5000);
 
 async function getData() {
     const getParams = {
