@@ -14,9 +14,6 @@ import time
 from http import server
 import serial
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('agg')
 
 raspi = os.name == 'posix'
 
@@ -47,36 +44,6 @@ class StreamingOutput(io.BufferedIOBase):
             self.condition.notify_all()
 
 
-def send_graph(self, col):
-    self.send_response(200)
-    self.send_header('Age', 0)
-    self.send_header('Cache-Control', 'no-cache, private')
-    self.send_header('Pragma', 'no-cache')
-    self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-    self.end_headers()
-
-    try:
-        conn = sqlite3.connect('readings.db')
-        while True:
-            with io.BytesIO() as frame_data:
-                df = pd.read_sql(f'SELECT time, {col} FROM readings', conn)
-                plt.plot(df.time, df[col])
-                plt.title(col.title())
-                plt.savefig(frame_data, format='jpeg', bbox_inches='tight')
-                new_frame = frame_data.getvalue()
-            self.wfile.write(b'--FRAME\r\n')
-            self.send_header('Content-Type', 'image/jpeg')
-            self.send_header('Content-Length', len(new_frame))
-            self.end_headers()
-            self.wfile.write(new_frame)
-            self.wfile.write(b'\r\n')
-            time.sleep(1)
-    except Exception as e:
-        logging.warning(
-            'Removed streaming client %s: %s',
-            self.client_address, str(e))
-
-
 def get_page(self):
     if self.path == '/':
         with open("static/index.html", "r") as page:
@@ -86,14 +53,6 @@ def get_page(self):
             self.send_header('Content-Length', str(len(content)))
             self.end_headers()
             self.wfile.write(content)
-    elif self.path == '/co2.mjpg':
-        send_graph(self, 'co2')
-    elif self.path == '/soil.mjpg':
-        send_graph(self, 'soil')
-    elif self.path == '/temperature.mjpg':
-        send_graph(self, 'temperature')
-    elif self.path == '/humidity.mjpg':
-        send_graph(self, 'humidity')
     elif self.path == '/stream.mjpg':
         self.send_response(200)
         self.send_header('Age', 0)
@@ -281,7 +240,7 @@ if __name__ == "__main__":
         "water": False
     }
 
-    data = {'co2': 3700, 'soil_humidity': 623, 'temperature': 20.1, 'humidity': 87.2}
+    data = {}
 
     if raspi:
         picam2 = Picamera2()
