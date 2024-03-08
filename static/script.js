@@ -23,7 +23,7 @@ async function getData() {
 
 async function postData() {
     const light = document.getElementById("light_check").checked
-    const water = document.getElementById("water_check").checked
+    const water = false //document.getElementById("water_check").checked
 
     const data = {
         light: light,
