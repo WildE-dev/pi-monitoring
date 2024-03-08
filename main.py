@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import base64
+import struct
+import threading
 from datetime import datetime
 import io
 import json
@@ -8,19 +10,16 @@ import logging
 import socketserver
 import time
 from http import server
-from threading import Condition, Lock
+import serial
 
-from smbus import SMBus
-from PIL import Image, ImageDraw, ImageFont
-import RPi.GPIO as GPIO
-import DHT
-from picamera2 import Picamera2
-from picamera2.encoders import MJPEGEncoder
-from picamera2.outputs import FileOutput
+raspi = False
 
-DHTPin = 11  # define the pin of DHT11
-LEDPin = 15
-WaterPin = 13
+if raspi:
+    from PIL import Image, ImageDraw, ImageFont
+
+    from picamera2 import Picamera2
+    from picamera2.encoders import MJPEGEncoder
+    from picamera2.outputs import FileOutput
 
 settings = {
     "light": False,
@@ -28,9 +27,9 @@ settings = {
 }
 
 data = {}
-data_update_time = 0
 
-fnt = ImageFont.truetype("fonts/UbuntuMono-Regular.ttf", 36)
+if raspi:
+    fnt = ImageFont.truetype("fonts/UbuntuMono-Regular.ttf", 36)
 
 
 def get_key():
@@ -41,7 +40,7 @@ def get_key():
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
         self.frame = None
-        self.condition = Condition()
+        self.condition = threading.Condition()
 
     def write(self, buf):
         with self.condition:
@@ -66,30 +65,31 @@ def get_page(self):
         self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
         self.end_headers()
 
-        try:
-            while True:
-                with output.condition:
-                    output.condition.wait()
-                    frame = output.frame
-                    im = Image.open(io.BytesIO(frame))
-                    draw = ImageDraw.Draw(im)
-                    now = datetime.now()
-                    draw.text((10, 10), now.strftime('%Y-%m-%d %H:%M:%S'), font=fnt, fill='white', stroke_fill='black', stroke_width=1)
-                    with io.BytesIO() as frame_data:
-                        im.save(frame_data, format="JPEG")
-                        new_frame = frame_data.getvalue()
-                self.wfile.write(b'--FRAME\r\n')
-                self.send_header('Content-Type', 'image/jpeg')
-                self.send_header('Content-Length', len(new_frame))
-                self.end_headers()
-                self.wfile.write(new_frame)
-                self.wfile.write(b'\r\n')
-        except Exception as e:
-            logging.warning(
-                'Removed streaming client %s: %s',
-                self.client_address, str(e))
+        if raspi:
+            try:
+                while True:
+                    with output.condition:
+                        output.condition.wait()
+                        frame = output.frame
+                        im = Image.open(io.BytesIO(frame))
+                        draw = ImageDraw.Draw(im)
+                        now = datetime.now()
+                        draw.text((10, 10), now.strftime('%Y-%m-%d %H:%M:%S'), font=fnt, fill='white', stroke_fill='black', stroke_width=1)
+                        with io.BytesIO() as frame_data:
+                            im.save(frame_data, format="JPEG")
+                            new_frame = frame_data.getvalue()
+                    self.wfile.write(b'--FRAME\r\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', len(new_frame))
+                    self.end_headers()
+                    self.wfile.write(new_frame)
+                    self.wfile.write(b'\r\n')
+            except Exception as e:
+                logging.warning(
+                    'Removed streaming client %s: %s',
+                    self.client_address, str(e))
     elif self.path == '/data.json':
-        content = get_data().encode('utf-8')
+        content = json.dumps(data).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/json')
         self.send_header('Content-Length', str(len(content)))
@@ -159,39 +159,12 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 
 def handle_post(post_data):
     global settings
+    global ser
     for i in post_data:
         if i in settings:
             settings[i] = post_data[i]
 
-    GPIO.output(LEDPin, GPIO.HIGH if settings["light"] else GPIO.LOW)
-    GPIO.output(WaterPin, GPIO.HIGH if settings["water"] else GPIO.LOW)
-
-
-def get_data():
-    global data_update_time
-    global data
-
-    if data_update_time >= time.time() - 5:
-        return json.dumps(data)
-
-    data_update_time = time.time()
-
-    chk = dht.readDHT11()  # Read DHT11 and get a return value.
-    if chk == dht.DHTLIB_OK:  # Determine whether data read is normal according to the return value.
-        data["temperature"] = dht.temperature
-        data["humidity"] = dht.humidity
-    else:
-        logging.warning("DHT11 Error: " + str(chk))
-
-    data["soil_humidity"] = round(read_ads7830(0) / 2.55)
-
-    return json.dumps(data)
-
-
-def read_ads7830(location):
-    locations = [0x84, 0xc4, 0x94, 0xd4, 0xa4, 0xe4, 0xb4, 0xf4]
-    bus.write_byte(0x4b, locations[location])
-    return bus.read_byte(0x4b)
+    ser.write(b'l' if settings["light"] else b'0')
 
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
@@ -199,22 +172,42 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     daemon_threads = True
 
 
+def serial_read():
+    global data
+    while True:
+        ser.read_until(b'\n')
+        if ser.in_waiting >= 12:
+            [co2] = struct.unpack("H", ser.read(2))
+            [soil] = struct.unpack("h", ser.read(2))
+            [temperature] = struct.unpack("f", ser.read(4))
+            [humidity] = struct.unpack("f", ser.read(4))
+
+            if int(co2) <= 0 or int(soil) < 0 or float(humidity) < 0:
+                continue
+
+            data["co2"] = int(co2)
+            data["soil_humidity"] = int(soil)
+            data["temperature"] = float(temperature)
+            data["humidity"] = float(humidity)
+
+
 if __name__ == "__main__":
     HOST, PORT = "", 8000
 
-    picam2 = Picamera2()
-    picam2.configure(picam2.create_video_configuration(main={"size": (1280, 720)}))
-    output = StreamingOutput()
-    picam2.start_recording(MJPEGEncoder(), FileOutput(output))
+    if raspi:
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_video_configuration(main={"size": (1280, 720)}))
+        output = StreamingOutput()
+        picam2.start_recording(MJPEGEncoder(), FileOutput(output))
 
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(LEDPin, GPIO.OUT)
-    GPIO.setup(WaterPin, GPIO.OUT)
+        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+    else:
+        ser = serial.Serial('COM3', 115200, timeout=1)
 
-    bus = SMBus(1)
+    ser.reset_input_buffer()
 
-    lock = Lock()
-    dht = DHT.DHT(DHTPin, lock)  # create a DHT class object
+    t = threading.Thread(target=serial_read)
+    t.start()
 
     # Create the server, binding to localhost on port 8000
     with StreamingServer((HOST, PORT), StreamingHandler) as server:
@@ -224,4 +217,4 @@ if __name__ == "__main__":
             server.serve_forever()
         except KeyboardInterrupt:
             server.server_close()
-            GPIO.cleanup()
+            ser.close()

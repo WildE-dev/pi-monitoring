@@ -15,9 +15,10 @@ async function getData() {
     const response = await fetch ("/data.json", getParams);
     const data = await response.json();
 
-    document.getElementById("temperature").innerHTML = "Temperature: " + (data['temperature'] ?? 0) + "&deg;C";
-    document.getElementById("humidity").innerHTML = "Humidity: " + (data['humidity'] ?? 0) + "%";
-    document.getElementById("soil_humidity").innerHTML = "Soil Humidity: " + (data['soil_humidity'] ?? 0) + "%";
+    document.getElementById("co2").innerHTML = "CO2: " + (data['co2'] ?? 0) + "ppm";
+    document.getElementById("temperature").innerHTML = "Temperature: " + (data['temperature'] ?? 0).toFixed(2) + "&deg;C";
+    document.getElementById("humidity").innerHTML = "Humidity: " + (data['humidity'] ?? 0).toFixed(2) + "%";
+    document.getElementById("soil_humidity").innerHTML = "Soil Humidity: " + (data['soil_humidity'] ?? 0);
 }
 
 async function postData() {
