@@ -200,7 +200,7 @@ if __name__ == "__main__":
         output = StreamingOutput()
         picam2.start_recording(MJPEGEncoder(), FileOutput(output))
 
-        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
     else:
         ser = serial.Serial('COM3', 115200, timeout=1)
 
