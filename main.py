@@ -131,10 +131,10 @@ def get_page(self):
         c.execute("select * from readings")
 
         with io.StringIO() as f:
-            results = cursor.fetchall()
+            results = c.fetchall()
 
             # Extract the table headers.
-            headers = [i[0] for i in cursor.description]
+            headers = [i[0] for i in c.description]
 
             # Open CSV file for writing.
             csv_file = csv.writer(f,
