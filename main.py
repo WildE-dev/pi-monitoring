@@ -134,16 +134,14 @@ def get_page(self):
             csv_writer = csv.writer(f, delimiter="\t")
             csv_writer.writerow([i[0] for i in c.description])
             csv_writer.writerows(c)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv')
+            self.send_header('Content-Length', str(len(f.getvalue())))
+            self.end_headers()
+            self.wfile.write(f.getvalue())
 
         c.close()
         conn.close()
-
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/csv')
-        self.send_header('Content-Length', str(len(f.getvalue())))
-        self.end_headers()
-        self.wfile.write(f.getvalue())
-
     elif self.path == '/script.js':
         with open("static/script.js", "r") as script:
             content = script.read().encode('utf-8')
