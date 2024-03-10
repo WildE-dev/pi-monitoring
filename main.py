@@ -131,14 +131,26 @@ def get_page(self):
         c.execute("select * from readings")
 
         with io.StringIO() as f:
-            csv_writer = csv.writer(f, delimiter="\t")
-            csv_writer.writerow([i[0] for i in c.description])
-            csv_writer.writerows(c)
+            results = cursor.fetchall()
+
+            # Extract the table headers.
+            headers = [i[0] for i in cursor.description]
+
+            # Open CSV file for writing.
+            csv_file = csv.writer(f,
+                                 delimiter=',', lineterminator='\r\n',
+                                 quoting=csv.QUOTE_ALL, escapechar='\\')
+
+            # Add the headers and data to the CSV file.
+            csv_file.writerow(headers)
+            csv_file.writerows(results)
             self.send_response(200)
             self.send_header('Content-Type', 'text/csv')
-            self.send_header('Content-Length', str(len(f.getvalue())))
+            # self.send_header('Transfer-Encoding', 'chunked')
+            bin_data = f.getvalue().encode('utf-8')
+            self.send_header('Content-Length', str(len(bin_data)))
             self.end_headers()
-            self.wfile.write(f.getvalue())
+            self.wfile.write(bin_data)
 
         c.close()
         conn.close()
