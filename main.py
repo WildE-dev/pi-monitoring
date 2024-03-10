@@ -130,10 +130,13 @@ def get_page(self):
         c = conn.cursor()
         c.execute("select * from readings")
 
-        with io.BytesIO() as f:
+        with io.StringIO() as f:
             csv_writer = csv.writer(f, delimiter="\t")
             csv_writer.writerow([i[0] for i in c.description])
             csv_writer.writerows(c)
+
+        c.close()
+        conn.close()
 
         self.send_response(200)
         self.send_header('Content-Type', 'text/csv')
