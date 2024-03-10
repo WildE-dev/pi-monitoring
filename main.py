@@ -232,6 +232,8 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 
 def serial_read():
     global data, last_check
+    conn = sqlite3.connect('readings.db')
+    c = conn.cursor()
     while raspi:
         ser.read_until(b'\n')
         if ser.in_waiting >= 12:
@@ -249,7 +251,7 @@ def serial_read():
             data["humidity"] = float(humidity)
 
             if last_check + read_time < time.time():
-                return
+                continue
 
             last_check = time.time()
 
@@ -260,11 +262,11 @@ def serial_read():
                 VALUES ('{iso_time}',{int(co2)},{int(soil)},{float(temperature)},{float(humidity)});
             """
 
-            conn = sqlite3.connect('readings.db')
-            c = conn.cursor()
-
             c.execute(query)
             conn.commit()
+
+    c.close()
+    conn.close()
 
 
 if __name__ == "__main__":
