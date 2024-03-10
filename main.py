@@ -14,7 +14,6 @@ import socketserver
 import time
 from http import server
 import serial
-import pandas as pd
 
 raspi = os.name == 'posix'
 
@@ -138,8 +137,8 @@ def get_page(self):
 
             # Open CSV file for writing.
             csv_file = csv.writer(f,
-                                 delimiter=',', lineterminator='\r\n',
-                                 quoting=csv.QUOTE_ALL, escapechar='\\')
+                                  delimiter=',', lineterminator='\r\n',
+                                  quoting=csv.QUOTE_ALL, escapechar='\\')
 
             # Add the headers and data to the CSV file.
             csv_file.writerow(headers)
@@ -232,9 +231,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 
 
 def serial_read():
-    global data
-    conn = sqlite3.connect('readings.db')
-    c = conn.cursor()
+    global data, last_check
     while raspi:
         ser.read_until(b'\n')
         if ser.in_waiting >= 12:
@@ -251,12 +248,20 @@ def serial_read():
             data["temperature"] = float(temperature)
             data["humidity"] = float(humidity)
 
+            if last_check + read_time < time.time():
+                return
+
+            last_check = time.time()
+
             iso_time = datetime.now().isoformat()
 
             query = f"""
                 INSERT INTO readings (time, co2, soil, temperature, humidity)
                 VALUES ('{iso_time}',{int(co2)},{int(soil)},{float(temperature)},{float(humidity)});
             """
+
+            conn = sqlite3.connect('readings.db')
+            c = conn.cursor()
 
             c.execute(query)
             conn.commit()
@@ -271,6 +276,10 @@ if __name__ == "__main__":
     }
 
     data = {}
+
+    read_time = 30
+
+    last_check = 0
 
     if raspi:
         picam2 = Picamera2()
