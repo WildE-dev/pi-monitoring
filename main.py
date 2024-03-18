@@ -6,13 +6,14 @@ import os
 import sqlite3
 import struct
 import threading
-from datetime import datetime
+from datetime import datetime, time
 import io
 import json
 import logging
 import socketserver
-import time
 from http import server
+from time import sleep
+
 import serial
 
 raspi = os.name == 'posix'
@@ -222,19 +223,32 @@ def handle_post(post_data):
         if i in settings:
             settings[i] = post_data[i]
 
-    ser.write(b'l' if settings["light"] else b'0')
-
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
 
+def in_between(now, start, end):
+    if start <= end:
+        return start <= now < end
+    else:  # over midnight e.g., 23:30-04:15
+        return start <= now or now < end
+
+
+def write_loop():
+    while True:
+        ser.write(b'l' if settings["light"] or is_day else b'0')
+        sleep(2)
+
+
 def serial_read():
-    global data, last_check
-    conn = sqlite3.connect('readings.db')
-    c = conn.cursor()
+    global data, is_day  # , last_check
+    # conn = sqlite3.connect('readings.db')
+    # c = conn.cursor()
     while raspi:
+        is_day = in_between(datetime.now().time(), time(hour=8, minute=0), time(hour=20, minute=0))
+
         ser.read_until(b'\n')
         if ser.in_waiting >= 12:
             [co2] = struct.unpack("H", ser.read(2))
@@ -250,23 +264,23 @@ def serial_read():
             data["temperature"] = float(temperature)
             data["humidity"] = float(humidity)
 
-            if last_check + read_time < time.time():
-                continue
-
-            last_check = time.time()
-
-            iso_time = datetime.now().isoformat()
-
-            query = f"""
-                INSERT INTO readings (time, co2, soil, temperature, humidity)
-                VALUES ('{iso_time}',{int(co2)},{int(soil)},{float(temperature)},{float(humidity)});
-            """
-
-            c.execute(query)
-            conn.commit()
-
-    c.close()
-    conn.close()
+    #         if last_check + read_time < time.time():
+    #             continue
+    #
+    #         last_check = time.time()
+    #
+    #         iso_time = datetime.now().isoformat()
+    #
+    #         query = f"""
+    #             INSERT INTO readings (time, co2, soil, temperature, humidity)
+    #             VALUES ('{iso_time}',{int(co2)},{int(soil)},{float(temperature)},{float(humidity)});
+    #         """
+    #
+    #         c.execute(query)
+    #         conn.commit()
+    #
+    # c.close()
+    # conn.close()
 
 
 if __name__ == "__main__":
@@ -277,11 +291,13 @@ if __name__ == "__main__":
         "water": False
     }
 
+    is_day = True
+
     data = {}
 
-    read_time = 30
+    # read_time = 30
 
-    last_check = 0
+    # last_check = 0
 
     if raspi:
         picam2 = Picamera2()
@@ -306,8 +322,10 @@ if __name__ == "__main__":
     humidity REAL);''')
     db.commit()
 
-    t = threading.Thread(target=serial_read)
-    t.start()
+    t1 = threading.Thread(target=serial_read)
+    t2 = threading.Thread(target=write_loop)
+    t1.start()
+    t2.start()
 
     # Create the server, binding to localhost on port 8000
     with StreamingServer((HOST, PORT), StreamingHandler) as server:
