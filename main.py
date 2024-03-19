@@ -238,17 +238,16 @@ def in_between(now, start, end):
 
 def write_loop():
     while True:
+        is_day = in_between(datetime.now().time(), time(hour=8, minute=0), time(hour=20, minute=0))
         ser.write(b'l' if settings["light"] or is_day else b'0')
         sleep(2)
 
 
 def serial_read():
-    global data, is_day  # , last_check
+    global data  # , last_check
     # conn = sqlite3.connect('readings.db')
     # c = conn.cursor()
     while raspi:
-        is_day = in_between(datetime.now().time(), time(hour=8, minute=0), time(hour=20, minute=0))
-
         ser.read_until(b'\n')
         if ser.in_waiting >= 12:
             [co2] = struct.unpack("H", ser.read(2))
@@ -290,8 +289,6 @@ if __name__ == "__main__":
         "light": False,
         "water": False
     }
-
-    is_day = True
 
     data = {}
 
