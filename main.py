@@ -86,45 +86,15 @@ def get_page(self):
                 logging.warning(
                     'Removed streaming client %s: %s',
                     self.client_address, str(e))
-    elif self.path == '/stream.mjpg':
-        self.send_response(200)
-        self.send_header('Age', 0)
-        self.send_header('Cache-Control', 'no-cache, private')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-        self.end_headers()
-
-        if raspi:
-            try:
-                while True:
-                    with output.condition:
-                        output.condition.wait()
-                        frame = output.frame
-                        im = Image.open(io.BytesIO(frame))
-                        draw = ImageDraw.Draw(im)
-                        now = datetime.now()
-                        draw.text((10, 10), now.strftime('%Y-%m-%d %H:%M:%S'), font=fnt, fill='white',
-                                  stroke_fill='black', stroke_width=1)
-                        with io.BytesIO() as frame_data:
-                            im.save(frame_data, format="JPEG")
-                            new_frame = frame_data.getvalue()
-                    self.wfile.write(b'--FRAME\r\n')
-                    self.send_header('Content-Type', 'image/jpeg')
-                    self.send_header('Content-Length', len(new_frame))
-                    self.end_headers()
-                    self.wfile.write(new_frame)
-                    self.wfile.write(b'\r\n')
-            except Exception as e:
-                logging.warning(
-                    'Removed streaming client %s: %s',
-                    self.client_address, str(e))
     elif self.path == '/data.json':
+        global connections
         content = json.dumps(data).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/json')
         self.send_header('Content-Length', str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+        connections[self.client_address] = datetime.now().timestamp()
     elif self.path == '/readings.csv':
         conn = sqlite3.connect('readings.db')
         c = conn.cursor()
@@ -198,30 +168,22 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
-    def do_POST(self):
-        if self.headers.get('Authorization') is None:
-            self.do_AUTHHEAD()
-            self.wfile.write('no auth header received'.encode('utf-8'))
-        elif self.headers.get('Authorization') == 'Basic ' + get_key():
-            self.send_response(204)
-            self.end_headers()
-
-            content_len = int(self.headers.get('Content-Length', 0))
-            post_body = self.rfile.read(content_len)
-            post_data = json.loads(post_body)
-            handle_post(post_data)
-        else:
-            self.do_AUTHHEAD()
-            self.wfile.write(self.headers.get('Authorization').encode('utf-8'))
-            self.wfile.write('not authenticated'.encode('utf-8'))
-
-
-def handle_post(post_data):
-    global settings
-    global ser
-    for i in post_data:
-        if i in settings:
-            settings[i] = post_data[i]
+    # def do_POST(self):
+    #     if self.headers.get('Authorization') is None:
+    #         self.do_AUTHHEAD()
+    #         self.wfile.write('no auth header received'.encode('utf-8'))
+    #     elif self.headers.get('Authorization') == 'Basic ' + get_key():
+    #         self.send_response(204)
+    #         self.end_headers()
+    #
+    #         content_len = int(self.headers.get('Content-Length', 0))
+    #         post_body = self.rfile.read(content_len)
+    #         post_data = json.loads(post_body)
+    #         handle_post(post_data)
+    #     else:
+    #         self.do_AUTHHEAD()
+    #         self.wfile.write(self.headers.get('Authorization').encode('utf-8'))
+    #         self.wfile.write('not authenticated'.encode('utf-8'))
 
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
@@ -237,9 +199,14 @@ def in_between(now, start, end):
 
 
 def write_loop():
+    global connections
     while True:
+        for key in list(connections.keys()):
+            if connections[key] + 30 < datetime.now().timestamp():
+                del connections[key]
+
         is_day = in_between(datetime.now().time(), time(hour=8, minute=0), time(hour=20, minute=0))
-        ser.write(b'l' if settings["light"] or is_day else b'0')
+        ser.write(b'l' if len(connections) > 0 or is_day else b'0')
         sleep(2)
 
 
@@ -285,12 +252,8 @@ def serial_read():
 if __name__ == "__main__":
     HOST, PORT = "", 8000
 
-    settings = {
-        "light": False,
-        "water": False
-    }
-
     data = {}
+    connections = {}
 
     # read_time = 30
 
