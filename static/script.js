@@ -1,4 +1,4 @@
-document.getElementById("postButton").addEventListener("click", postData);
+//document.getElementById("postButton").addEventListener("click", postData);
 setInterval(getData, 5000);
 
 async function getData() {
