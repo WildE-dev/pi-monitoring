@@ -94,7 +94,7 @@ def get_page(self):
         self.send_header('Content-Length', str(len(content)))
         self.end_headers()
         self.wfile.write(content)
-        connections[self.client_address] = datetime.now().timestamp()
+        connections += 1
     elif self.path == '/readings.csv':
         conn = sqlite3.connect('readings.db')
         c = conn.cursor()
@@ -201,13 +201,10 @@ def in_between(now, start, end):
 def write_loop():
     global connections
     while True:
-        for key in list(connections.keys()):
-            if connections[key] + 30 < datetime.now().timestamp():
-                del connections[key]
-
         is_day = in_between(datetime.now().time(), time(hour=8, minute=0), time(hour=20, minute=0))
-        ser.write(b'l' if len(connections) > 0 or is_day else b'0')
-        sleep(2)
+        ser.write(b'l' if connections > 0 or is_day else b'0')
+        connections = 0
+        sleep(10)
 
 
 def serial_read():
@@ -253,7 +250,7 @@ if __name__ == "__main__":
     HOST, PORT = "", 8000
 
     data = {}
-    connections = {}
+    connections = 0
 
     # read_time = 30
 
